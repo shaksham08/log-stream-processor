@@ -23,7 +23,7 @@ func (s SystemLog) display() {
 }
 
 func printSomething(e Event) {
-	fmt.Printf("%+v", e)
+	fmt.Printf("%+v\n", e)
 }
 
 func main() {
@@ -35,6 +35,14 @@ func main() {
 			Body:   "System is running",
 		},
 		Severity: "System",
+	}
+
+	events = append(events, slog)
+
+	// This is another syntax we can use
+	slog = SystemLog{
+		Log{2, "System", "System is running "},
+		"System",
 	}
 
 	events = append(events, slog)
