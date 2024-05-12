@@ -7,34 +7,31 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
+	"github.com/shaksham08/log-stream-processor/internal/tcp"
 	"github.com/shaksham08/log-stream-processor/pkg/handler"
 	"github.com/shaksham08/log-stream-processor/pkg/models"
 )
 
-func simulateIngress(ch chan models.Event) {
-	for i := 0; i < 10; i++ {
-		ch <- models.SystemLog{
-			Log: models.Log{
-				ID:     i,
-				Source: "System",
-				Body:   "System is running",
-			},
-			Severity: "Info",
-		}
-		time.Sleep(1 * time.Second)
-	}
+// func simulateIngress(ch chan models.Event) {
+// 	for i := 0; i < 5; i++ {
+// 		ch <- models.SystemLog{
+// 			Log:      models.Log{ID: i, Source: "App", Body: "System is running"},
+// 			Severity: "INFO",
+// 		}
+// 		time.Sleep(1 * time.Second)
+// 	}
+// }
 
-}
-
-func listenForCancel(cancel context.CancelFunc, wg *sync.WaitGroup) {
+func listenForCancel(cancel context.CancelFunc, wg *sync.WaitGroup, ch chan models.Event) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	fmt.Println("Received signal to cancel")
+	close(ch)
 	cancel()
-	wg.Done()
+
+	defer wg.Done()
 }
 
 func main() {
@@ -42,11 +39,10 @@ func main() {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(context.Background())
-	wg.Add(1)
-	go listenForCancel(cancel, &wg)
-
 	handler.Init(ch, &wg, ctx)
-	simulateIngress(ch)
-	close(ch)
+	wg.Add(2)
+	go listenForCancel(cancel, &wg, ch)
+	go tcp.Init(&wg, ctx, ch)
+
 	defer wg.Wait()
 }

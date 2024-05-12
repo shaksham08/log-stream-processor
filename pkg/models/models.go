@@ -3,7 +3,7 @@ package models
 import "fmt"
 
 type Event interface {
-	display()
+	Display()
 }
 
 // Base struct
@@ -18,39 +18,10 @@ type SystemLog struct {
 	Severity string
 }
 
-func (s SystemLog) display() {
-	fmt.Printf("%+v", s)
-}
-
-func printSomething(e Event) {
-	fmt.Printf("%+v\n", e)
-}
-
-func main() {
-	var events []Event
-	slog := SystemLog{
-		Log: Log{
-			ID:     1,
-			Source: "System",
-			Body:   "System is running",
-		},
-		Severity: "System",
-	}
-
-	events = append(events, slog)
-
-	// This is another syntax we can use
-	slog = SystemLog{
-		Log{2, "System", "System is running "},
-		"System",
-	}
-
-	events = append(events, slog)
-
-	for _, event := range events {
-		event.display()
-		// Now since system log implements the function names display and interface Event also has function display
-		// So SystemLog is also now part of Event struct and now System log can also access all the functions associated with Event
-		printSomething(event)
-	}
+// implement display method for SystemLog
+func (s SystemLog) Display() {
+	fmt.Println("ID: ", s.Log.ID)
+	fmt.Println("Source: ", s.Log.Source)
+	fmt.Println("Body: ", s.Log.Body)
+	fmt.Println("Severity: ", s.Severity)
 }
