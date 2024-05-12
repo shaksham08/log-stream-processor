@@ -32,7 +32,7 @@ func listenForCancel(cancel context.CancelFunc, wg *sync.WaitGroup) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	fmt.Println("Recieved signal for cancel")
+	fmt.Println("Received signal to cancel")
 	cancel()
 	wg.Done()
 }
@@ -42,12 +42,11 @@ func main() {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(context.Background())
-
 	wg.Add(1)
 	go listenForCancel(cancel, &wg)
 
 	handler.Init(ch, &wg, ctx)
 	simulateIngress(ch)
-	defer close(ch)
-	wg.Wait()
+	close(ch)
+	defer wg.Wait()
 }
