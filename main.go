@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"sync"
 
+	"github.com/shaksham08/log-stream-processor/pkg/handler"
 	"github.com/shaksham08/log-stream-processor/pkg/models"
 )
 
@@ -15,7 +16,8 @@ func main() {
 		},
 		Severity: "Info",
 	}
+	var wg sync.WaitGroup
 
-	fmt.Println(event)
-	// handler.ProcessEvent()
+	handler.Init(event, &wg)
+	wg.Wait()
 }
