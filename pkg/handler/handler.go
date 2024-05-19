@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -8,17 +9,22 @@ import (
 	"github.com/shaksham08/log-stream-processor/pkg/models"
 )
 
-func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event) {
+func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context) {
 	defer wg.Done()
-	for chanEvent := range ch {
-		fmt.Println(chanEvent)
-	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-ch:
 
+			fmt.Println("THe event recieved is ", event)
+		}
+	}
 }
 
-func Init(event models.SystemLog, wg *sync.WaitGroup, ch chan models.Event) {
+func Init(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context) {
 	for i := 0; i < config.MAX_HANDLER; i++ {
 		wg.Add(1)
-		go ProcessEvent(wg, ch)
+		go ProcessEvent(wg, ch, ctx)
 	}
 }

@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/shaksham08/log-stream-processor/pkg/handler"
@@ -18,20 +23,24 @@ func simulateIngress(ch chan models.Event) {
 	}
 }
 
-func main() {
-	event := models.SystemLog{
-		Log: models.Log{
-			ID:     1,
-			Source: "App",
-			Body:   "Something here",
-		},
-		Severity: "Info",
-	}
-	var wg sync.WaitGroup
-
-	ch := make(chan models.Event, 100)
-	simulateIngress(ch)
-	handler.Init(event, &wg, ch)
+func listenForCancel(cancel context.CancelFunc, ch chan models.Event, wg *sync.WaitGroup) {
+	defer wg.Done()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
+	fmt.Println("Received signal to cancel")
 	close(ch)
+	cancel()
+}
+
+func main() {
+	var wg sync.WaitGroup
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	ch := make(chan models.Event, 100)
+	handler.Init(&wg, ch, ctx)
+	simulateIngress(ch)
+	wg.Add(1)
+	go listenForCancel(cancel, ch, &wg)
 	wg.Wait()
 }
