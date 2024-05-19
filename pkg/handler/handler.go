@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/shaksham08/log-stream-processor/config"
+	"github.com/shaksham08/log-stream-processor/pkg/filter"
 	"github.com/shaksham08/log-stream-processor/pkg/models"
+	"github.com/shaksham08/log-stream-processor/pkg/processor"
 )
 
 func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context) {
@@ -16,10 +18,16 @@ func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context)
 		case <-ctx.Done():
 			return
 		case event, ok := <-ch:
-			if !ok { // we are adding this because on closing this channel we are getting false repeatedly
+			if !ok {
 				return
 			}
-			fmt.Println("THe event recieved is ", event)
+			processedEvent := processor.ProcessEvent(event)
+			// Example filter: Only process INFO severity events.
+			filter := filter.SeverityFilter("INFO")
+			if filter(processedEvent) {
+				fmt.Printf("Handler: %v\n", processedEvent)
+				// Here we would forward the event to the egress layer.
+			}
 		}
 	}
 }
