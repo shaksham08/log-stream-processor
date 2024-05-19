@@ -15,8 +15,10 @@ func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context)
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-ch:
-
+		case event, ok := <-ch:
+			if !ok { // we are adding this because on closing this channel we are getting false repeatedly
+				return
+			}
 			fmt.Println("THe event recieved is ", event)
 		}
 	}
