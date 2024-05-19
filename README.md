@@ -22,4 +22,4 @@ Note:= For now we will be using some dummy source and pass it to Handler
 
 - Now communication between ingress and handler will happen using channel
 
-- Filtering and processing part [link](https://github.com/Priyanka488/log-stream-processor/pull/1/files)
+- Filtering and processing part [link](https://github.com/Priyanka488/log-stream-processor/pull/1/files) 
