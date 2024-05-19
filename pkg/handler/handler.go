@@ -8,15 +8,17 @@ import (
 	"github.com/shaksham08/log-stream-processor/pkg/models"
 )
 
-func ProcessEvent(wg *sync.WaitGroup) {
+func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event) {
 	defer wg.Done()
-	fmt.Println("Processing event")
+	for chanEvent := range ch {
+		fmt.Println(chanEvent)
+	}
 
 }
 
-func Init(event models.SystemLog, wg *sync.WaitGroup) {
+func Init(event models.SystemLog, wg *sync.WaitGroup, ch chan models.Event) {
 	for i := 0; i < config.MAX_HANDLER; i++ {
 		wg.Add(1)
-		go ProcessEvent(wg)
+		go ProcessEvent(wg, ch)
 	}
 }
