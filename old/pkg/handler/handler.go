@@ -9,22 +9,33 @@ import (
 	"github.com/shaksham08/log-stream-processor/pkg/models"
 )
 
-func ProcessEvent(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context) {
+func processEvent(i int, ch chan models.Event, wg *sync.WaitGroup, ctx context.Context) {
+
 	defer wg.Done()
+	defer fmt.Println("Handler ", i, " is done")
+
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("Closing handler: ", i)
 			return
-		case event := <-ch:
+		case event, ok := <-ch:
+			if !ok {
+				fmt.Println("Channel closed")
+				return
+			}
+			event.Display()
+			// process event
 
-			fmt.Println("THe event recieved is ", event)
+			// filter event
 		}
 	}
+
 }
 
-func Init(wg *sync.WaitGroup, ch chan models.Event, ctx context.Context) {
-	for i := 0; i < config.MAX_HANDLER; i++ {
+func Init(ch chan models.Event, wg *sync.WaitGroup, ctx context.Context) {
+	for i := 0; i < config.MAX_HANDLERS; i++ {
 		wg.Add(1)
-		go ProcessEvent(wg, ch, ctx)
+		go processEvent(i+1, ch, wg, ctx)
 	}
 }
