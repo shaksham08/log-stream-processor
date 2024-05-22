@@ -21,4 +21,3 @@
 Note:= For now we will be using some dummy source and pass it to Handler
 
 - Now communication between ingress and handler will happen using channel
-
