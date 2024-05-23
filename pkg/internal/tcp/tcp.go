@@ -1,53 +1,26 @@
-package main
+package tcp
 
 import (
 	"context"
 	"fmt"
 	"net"
-	"os"
-	"os/signal"
+	"strings"
 	"sync"
-	"syscall"
+
+	"github.com/shaksham08/log-stream-processor/config"
+	"github.com/shaksham08/log-stream-processor/pkg/models"
+	"github.com/shaksham08/log-stream-processor/pkg/processor"
 )
 
-// 4. keep listening on the same connection
-func handleConnection(conn net.Conn, wg *sync.WaitGroup, ctx context.Context) {
-	defer wg.Done()
-	fmt.Println("New connection")
-	connect_ch := make(chan bool)
-	go func(connect_ch chan bool) {
-		for {
-			chunk := make([]byte, 1024)
-			readBytes, err := conn.Read(chunk)
-			if err != nil {
-				fmt.Println("Error reading:", err.Error())
-				connect_ch <- true
-				return
-			}
+// 5. Add Context Cancellation to TCP Server
 
-			fmt.Printf("Received data: %v", string(chunk[:readBytes]))
-		}
-	}(connect_ch)
-
-	select {
-	case <-connect_ch:
-		fmt.Println("Closing connection, client disconnected")
-	case <-ctx.Done():
-		fmt.Println("Closing connection, context cancelled")
-	}
-
-	if err := conn.Close(); err != nil {
-		fmt.Println("Error closing connection:", err.Error())
-	}
-}
-
-func InitTCP(wg *sync.WaitGroup, ctx context.Context) {
+func Init(wg *sync.WaitGroup, ctx context.Context, ch chan models.Event) {
 
 	defer wg.Done()
 
 	var wg_tcp sync.WaitGroup
 	// 1. create a listener
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", 8080))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.TCP_PORT))
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		return
@@ -63,11 +36,10 @@ func InitTCP(wg *sync.WaitGroup, ctx context.Context) {
 				return
 			}
 			wg_tcp.Add(1)
-			go handleConnection(conn, &wg_tcp, ctx)
+			go handleRequest(conn, &wg_tcp, ctx, ch)
 		}
 	}()
 
-	// 4. wait for a signal to cancel
 	<-ctx.Done()
 	fmt.Println("Closing TCP server, context cancelled")
 	if err := listener.Close(); err != nil {
@@ -75,20 +47,39 @@ func InitTCP(wg *sync.WaitGroup, ctx context.Context) {
 	}
 	wg_tcp.Wait()
 	fmt.Println("TCP server closed")
-
 }
 
-func main() {
-	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
-	wg.Add(1)
-	go InitTCP(&wg, ctx)
+// 4. keep listening on the same connection
+func handleRequest(conn net.Conn, wg *sync.WaitGroup, ctx context.Context, ch chan models.Event) {
+	defer wg.Done()
+	fmt.Println("New connection")
+	connect_ch := make(chan bool)
+	go func(connect_ch chan bool) {
+		for {
+			chunk := make([]byte, config.TCP_MESSAGE_SIZE)
+			readBytes, err := conn.Read(chunk)
+			if err != nil {
+				fmt.Println("Error reading:", err.Error())
+				connect_ch <- true
+				return
+			}
+			// 6. Send data to handler
+			data_str := string(chunk[:readBytes])
+			// trim null characters
+			data_str = strings.TrimSpace(data_str)
+			ch <- processor.ProcessStringToEvent(data_str)
+			fmt.Printf("Received data: %v", data_str)
+		}
+	}(connect_ch)
 
-	// Wait for a signal to cancel
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-	fmt.Println("Received signal to cancel")
-	cancel()
-	wg.Wait()
+	select {
+	case <-connect_ch:
+		fmt.Println("Closing connection, client disconnected")
+	case <-ctx.Done():
+		fmt.Println("Closing connection, context cancelled")
+	}
+
+	if err := conn.Close(); err != nil {
+		fmt.Println("Error closing connection:", err.Error())
+	}
 }
